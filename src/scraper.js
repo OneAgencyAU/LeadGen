@@ -131,15 +131,22 @@ async function scrapeGoogleMaps(targetCount = 100) {
   });
 
   // Run the Apify Google Maps scraper
-  const run = await client.actor(config.apifyGoogleMapsActor).call({
-    searchStringsArray: searchStrings,
-    maxCrawledPlacesPerSearch: Math.ceil(targetCount / searches.length) + 10,
-    language: 'en',
-    country: 'AU',
-    maxReviews: 0,
-    exportPlaceUrls: false,
-    additionalInfo: false,
-  });
+  // waitSecs: cap wall-clock wait at 4 minutes to avoid hanging indefinitely
+  const run = await client.actor(config.apifyGoogleMapsActor).call(
+    {
+      searchStringsArray: searchStrings,
+      maxCrawledPlacesPerSearch: Math.ceil(targetCount / searches.length) + 10,
+      language: 'en',
+      country: 'AU',
+      maxReviews: 0,
+      exportPlaceUrls: false,
+      additionalInfo: false,
+      scrapeDirectories: false,
+      scrapeImageUrls: false,
+      scrapeResponseFromOwnerText: false,
+    },
+    { waitSecs: 240 }
+  );
 
   logger.info(`Apify run ${run.id} completed. Fetching results...`);
 
