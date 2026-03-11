@@ -16,13 +16,14 @@
  */
 
 const db = require('./db');
-const { scrapeGoogleMaps } = require('./scraper');
+const { scrapeSuburb } = require('./scraper');
 const { qualifyLead } = require('./qualifier');
 const { loadPortfolio, matchPortfolio } = require('./portfolio');
 const { generateEmail } = require('./emailGenerator');
 const { createDraft } = require('./gmail');
 const config = require('./config');
 const logger = require('./logger');
+const { ADELAIDE_SUBURBS } = require('./suburbs');
 
 async function runDailyPipeline() {
   const startTime = Date.now();
@@ -56,14 +57,21 @@ async function runDailyPipeline() {
     logger.error('Could not fetch pending businesses:', err.message);
   }
 
-  // Step 3: Scrape new businesses if we don't have enough pending ones
+  // Step 3: Scrape next suburb if we don't have enough pending leads
   let newLeads = [];
-  const scrapeTarget = Math.max(0, dailyCap * 5 - pendingLeads.length);
-  if (scrapeTarget > 0) {
+  let currentSuburb = null;
+  const scrapeNeeded = pendingLeads.length < dailyCap * 2;
+  if (scrapeNeeded) {
     try {
-      newLeads = await scrapeGoogleMaps(scrapeTarget + 50);
-      summary.leads_scraped = newLeads.length;
-      logger.info(`Scraped ${newLeads.length} raw businesses from Google Maps`);
+      currentSuburb = await db.getNextSuburb(ADELAIDE_SUBURBS);
+      if (!currentSuburb) {
+        logger.info('All suburbs have been scraped — nothing new to scrape');
+      } else {
+        logger.info(`Next suburb to scrape: ${currentSuburb}`);
+        newLeads = await scrapeSuburb(currentSuburb);
+        summary.leads_scraped = newLeads.length;
+        logger.info(`Scraped ${newLeads.length} raw businesses from ${currentSuburb}`);
+      }
     } catch (err) {
       logger.error('Scraping failed:', err.message);
       summary.errors++;
@@ -108,6 +116,16 @@ async function runDailyPipeline() {
   logger.info(
     `Stored ${storedNewLeads.length} new leads (${summary.leads_skipped_duplicate} duplicates skipped)`
   );
+
+  // Mark suburb as fully scraped now that all results are stored
+  if (currentSuburb) {
+    try {
+      await db.markSuburbScraped(currentSuburb, storedNewLeads.length);
+      logger.info(`Marked ${currentSuburb} as scraped`);
+    } catch (err) {
+      logger.warn(`Could not mark suburb ${currentSuburb} as scraped: ${err.message}`);
+    }
+  }
 
   // Step 5–8: Qualify, generate emails, create Gmail drafts
   const allCandidates = [...pendingLeads, ...storedNewLeads];

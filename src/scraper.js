@@ -24,51 +24,24 @@ const SEARCH_CATEGORIES = [
   },
 ];
 
-const SA_LOCATIONS = [
-  'Adelaide SA',
-  'Barossa Valley SA',
-  'McLaren Vale SA',
-  'Fleurieu Peninsula SA',
-  'Mount Gambier SA',
-  'Whyalla SA',
-  'Port Augusta SA',
-  'Gawler SA',
-  'Victor Harbor SA',
-  'Murray Bridge SA',
-];
-
 /**
- * Build a rotating set of search strings for today's run.
- * Uses the day of week to rotate through categories/locations so we don't
- * always scrape the same ones.
+ * Build all search strings for a given suburb — one per category query.
+ * Returns [{ category, searchString }]
  */
-function buildSearchStrings(count = 5) {
-  const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
-  const allCombinations = [];
-
+function buildSuburbSearches(suburb) {
+  const searches = [];
   for (const { category, queries } of SEARCH_CATEGORIES) {
     for (const query of queries) {
-      for (const location of SA_LOCATIONS) {
-        allCombinations.push({ category, searchString: `${query} in ${location}` });
-      }
+      searches.push({ category, searchString: `${query} in ${suburb} SA` });
     }
   }
-
-  // Rotate based on day to spread coverage across the week
-  const offset = (dayOfWeek * 17) % allCombinations.length;
-  const selected = [];
-  for (let i = 0; i < count; i++) {
-    selected.push(allCombinations[(offset + i) % allCombinations.length]);
-  }
-
-  return selected;
+  return searches;
 }
 
 /**
- * Infer category from Apify result categoryName or search query context.
+ * Infer category from Apify result categoryName field.
  */
-function inferCategory(place, searchCategory) {
-  if (searchCategory) return searchCategory;
+function inferCategory(place) {
   const name = (place.categoryName || '').toLowerCase();
   if (/plumb|electr|build|roof|paint|concret|trade/.test(name)) return 'trades';
   if (/mechanic|panel|auto|tyre|car/.test(name)) return 'automotive';
@@ -82,10 +55,8 @@ function inferCategory(place, searchCategory) {
  */
 function parseSuburb(address) {
   if (!address) return '';
-  // Try to extract suburb from SA address
   const match = address.match(/,\s*([^,]+?)\s+SA\s+\d{4}/i);
   if (match) return match[1].trim();
-  // Fallback: second-to-last part before SA
   const parts = address.split(',');
   if (parts.length >= 2) return parts[parts.length - 2].trim().replace(/\s+SA.*/i, '').trim();
   return '';
@@ -108,34 +79,34 @@ function normalisePlaceResult(place, category) {
 }
 
 function extractEmail(place) {
-  // Apify sometimes returns emails array or single email field
   if (place.email) return place.email;
   if (Array.isArray(place.emails) && place.emails.length > 0) return place.emails[0];
   return null;
 }
 
 /**
- * Scrape businesses from Google Maps via Apify.
- * Returns array of normalised lead objects (not yet deduped or qualified).
+ * Scrape all businesses in a single suburb across all category queries.
+ * Returns array of normalised lead objects.
  */
-async function scrapeGoogleMaps(targetCount = 100) {
+async function scrapeSuburb(suburb) {
   const client = new ApifyClient({ token: config.apifyApiKey() });
-  const searches = buildSearchStrings(6); // 6 search strings per run
+  const searches = buildSuburbSearches(suburb);
 
-  logger.info(`Starting Apify scrape with ${searches.length} search queries...`);
+  logger.info(`Scraping suburb: ${suburb} (${searches.length} category queries)`);
 
   const searchStrings = searches.map((s) => s.searchString);
+
+  // Build a map so we can recover the category from the search string
   const categoryMap = {};
   searches.forEach((s) => {
     categoryMap[s.searchString] = s.category;
   });
 
-  // Run the Apify Google Maps scraper
-  // waitSecs: cap wall-clock wait at 4 minutes to avoid hanging indefinitely
   const run = await client.actor(config.apifyGoogleMapsActor).call(
     {
       searchStringsArray: searchStrings,
-      maxCrawledPlacesPerSearch: Math.ceil(targetCount / searches.length) + 10,
+      // Small suburbs won't have more than ~20 of any one business type
+      maxCrawledPlacesPerSearch: 20,
       language: 'en',
       country: 'AU',
       maxReviews: 0,
@@ -144,34 +115,30 @@ async function scrapeGoogleMaps(targetCount = 100) {
       scrapeDirectories: false,
       scrapeImageUrls: false,
       scrapeResponseFromOwnerText: false,
-      // Prevent the actor from zooming out and crawling all of Australia
+      // Keep search geographically tight — don't expand beyond the suburb
       maxAutomaticZoomOut: 1,
     },
-    { waitSecs: 240 }
+    { waitSecs: 300 }
   );
 
-  logger.info(`Apify run ${run.id} completed. Fetching results...`);
+  logger.info(`Apify run ${run.id} finished for ${suburb}. Fetching results...`);
 
-  // Fetch all results from the dataset
   const { items } = await client.dataset(run.defaultDatasetId).listItems({
-    limit: targetCount * 3,
+    limit: searches.length * 25,
   });
 
-  logger.info(`Apify returned ${items.length} raw results`);
+  logger.info(`Apify returned ${items.length} raw results for ${suburb}`);
 
   const leads = [];
   for (const item of items) {
     if (!item.title && !item.name) continue;
-    // Try to determine category from search string used
-    const category = inferCategory(item, null);
+    const category = inferCategory(item);
     const lead = normalisePlaceResult(item, category);
-    if (lead.business_name) {
-      leads.push(lead);
-    }
+    if (lead.business_name) leads.push(lead);
   }
 
-  logger.info(`Normalised ${leads.length} leads from Apify results`);
+  logger.info(`Normalised ${leads.length} leads from ${suburb}`);
   return leads;
 }
 
-module.exports = { scrapeGoogleMaps, SEARCH_CATEGORIES, SA_LOCATIONS };
+module.exports = { scrapeSuburb, SEARCH_CATEGORIES };

@@ -84,6 +84,32 @@ async function logRunSummary(summary) {
   }
 }
 
+/**
+ * Return the first suburb from orderedList not yet in scraped_suburbs.
+ * Returns null if all suburbs have been scraped.
+ */
+async function getNextSuburb(orderedList) {
+  const { data, error } = await getClient()
+    .from('scraped_suburbs')
+    .select('suburb');
+
+  if (error) throw new Error(`DB error fetching scraped suburbs: ${error.message}`);
+
+  const done = new Set((data || []).map((r) => r.suburb.toLowerCase()));
+  return orderedList.find((s) => !done.has(s.toLowerCase())) || null;
+}
+
+/**
+ * Mark a suburb as fully scraped.
+ */
+async function markSuburbScraped(suburb, businessesFound = 0) {
+  const { error } = await getClient()
+    .from('scraped_suburbs')
+    .upsert([{ suburb, businesses_found: businessesFound }], { onConflict: 'suburb' });
+
+  if (error) throw new Error(`DB error marking suburb scraped: ${error.message}`);
+}
+
 module.exports = {
   getClient,
   businessExists,
@@ -91,4 +117,6 @@ module.exports = {
   updateBusiness,
   getPendingBusinesses,
   logRunSummary,
+  getNextSuburb,
+  markSuburbScraped,
 };
