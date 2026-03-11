@@ -117,11 +117,11 @@ async function runDailyPipeline() {
     `Stored ${storedNewLeads.length} new leads (${summary.leads_skipped_duplicate} duplicates skipped)`
   );
 
-  // Mark suburb as fully scraped now that all results are stored
-  if (currentSuburb) {
+  // Only mark suburb done when it's fully exhausted (no new businesses found = all duplicates)
+  if (currentSuburb && newLeads.length > 0 && storedNewLeads.length === 0) {
     try {
-      await db.markSuburbScraped(currentSuburb, storedNewLeads.length);
-      logger.info(`Marked ${currentSuburb} as scraped`);
+      await db.markSuburbScraped(currentSuburb, 0);
+      logger.info(`${currentSuburb} exhausted — marked done, next run will move to next suburb`);
     } catch (err) {
       logger.warn(`Could not mark suburb ${currentSuburb} as scraped: ${err.message}`);
     }
