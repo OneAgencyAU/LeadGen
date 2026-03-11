@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LeadGen — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #06061a;
+      --bg-card: rgba(11, 11, 35, 0.92);
+      --border: rgba(124, 58, 237, 0.2);
+      --border-hover: rgba(124, 58, 237, 0.4);
+      --purple: #7c3aed;
+      --purple-light: #a78bfa;
+      --blue: #3b82f6;
+      --blue-light: #60a5fa;
+      --cyan: #06b6d4;
+      --cyan-light: #22d3ee;
+      --green: #10b981;
+      --green-light: #34d399;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --gray: #6b7280;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #374151;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 215px;
+      min-width: 215px;
+      background: rgba(8, 8, 26, 0.98);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 0;
+    }
+
+    .sidebar-logo {
+      padding: 0 18px 22px;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.12);
+    }
+
+    .logo-mark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+      flex-shrink: 0;
+    }
+
+    .logo-text .name {
+      font-size: 15px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+
+    .logo-text .sub {
+      font-size: 11px;
+      color: #374151;
+      margin-top: 1px;
+    }
+
+    .nav { padding: 14px 10px; flex: 1; }
+
+    .nav-section {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 10px 10px 5px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      transition: all 0.15s;
+      margin-bottom: 1px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+    }
+
+    .nav-item:hover { background: rgba(124, 58, 237, 0.1); color: var(--purple-light); }
+    .nav-item.active {
+      background: rgba(124, 58, 237, 0.15);
+      color: var(--purple-light);
+      font-weight: 500;
+    }
+    .nav-item svg { opacity: 0.65; flex-shrink: 0; }
+    .nav-item.active svg { opacity: 1; }
+
+    .sidebar-footer {
+      padding: 16px 18px 0;
+      border-top: 1px solid rgba(124, 58, 237, 0.12);
+    }
+
+    .next-run-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+    .next-run-time { font-size: 12.5px; color: var(--purple-light); font-weight: 600; }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 26px 32px;
+      min-width: 0;
+    }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    .page-title {
+      font-size: 21px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e2e8f0 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-subtitle { font-size: 12.5px; color: #475569; margin-top: 2px; }
+
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+      color: #34d399;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(124, 58, 237, 0.12);
+      border: 1px solid rgba(124, 58, 237, 0.28);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12.5px;
+      color: var(--purple-light);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .btn:hover { background: rgba(124, 58, 237, 0.22); border-color: rgba(124, 58, 237, 0.45); }
+    .btn.spinning svg { animation: spin 0.7s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── STAT CARDS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .stat-card:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: -20px;
+      right: -20px;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      opacity: 0.06;
+    }
+
+    .stat-card.c-purple::after { background: #7c3aed; }
+    .stat-card.c-blue::after   { background: #3b82f6; }
+    .stat-card.c-cyan::after   { background: #06b6d4; }
+    .stat-card.c-green::after  { background: #10b981; }
+
+    .stat-icon {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      opacity: 0.35;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+
+    .stat-card.c-purple .stat-value { color: var(--purple-light); }
+    .stat-card.c-blue   .stat-value { color: var(--blue-light); }
+    .stat-card.c-cyan   .stat-value { color: var(--cyan-light); }
+    .stat-card.c-green  .stat-value { color: var(--green-light); }
+
+    .stat-sub { font-size: 12px; color: var(--text-dim); }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+
+    .card-title { font-size: 14px; font-weight: 600; color: #cbd5e1; }
+    .card-sub   { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+
+    /* ── CHARTS ROW ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+    }
+
+    .chart-wrap { position: relative; height: 200px; }
+
+    .donut-wrap {
+      position: relative;
+      height: 165px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .donut-center {
+      position: absolute;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .donut-center .big   { font-size: 26px; font-weight: 700; color: var(--purple-light); }
+    .donut-center .small { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .donut-legend {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .donut-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .dl-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dl-val { margin-left: auto; font-weight: 600; color: #94a3b8; font-size: 12px; }
+
+    /* ── BOTTOM ROW ── */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 370px;
+      gap: 14px;
+    }
+
+    /* ── TABS ── */
+    .tab-bar {
+      display: flex;
+      gap: 3px;
+      background: rgba(6, 6, 26, 0.7);
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .tab {
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text-muted);
+      border: none;
+      background: none;
+      font-family: inherit;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .tab:hover { color: #94a3b8; }
+    .tab.active { background: rgba(124, 58, 237, 0.2); color: var(--purple-light); font-weight: 500; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; margin-top: 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+
+    thead th {
+      text-align: left;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 0 10px 9px;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(124, 58, 237, 0.05);
+      transition: background 0.1s;
+    }
+
+    tbody tr:hover { background: rgba(124, 58, 237, 0.05); }
+
+    tbody td {
+      padding: 8px 10px;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    td.biz-name { color: #cbd5e1; font-weight: 500; max-width: 160px; }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .badge-emailed      { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.22); }
+    .badge-qualified    { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.22); }
+    .badge-scraped      { background: rgba(124,58,237,0.12); color: #a78bfa; border: 1px solid rgba(124,58,237,0.22); }
+    .badge-not_qualified{ background: rgba(107,114,128,0.12); color: #9ca3af; border: 1px solid rgba(107,114,128,0.18); }
+    .badge-no_email     { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.22); }
+
+    .cat-pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      font-weight: 500;
+      background: rgba(124, 58, 237, 0.1);
+      color: #7c3aed;
+      border: 1px solid rgba(124, 58, 237, 0.18);
+    }
+
+    /* ── PAGINATION ── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(124, 58, 237, 0.08);
+    }
+
+    .page-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: 1px solid rgba(124, 58, 237, 0.15);
+      background: none;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .page-btn:hover:not(:disabled) {
+      background: rgba(124, 58, 237, 0.1);
+      color: var(--purple-light);
+      border-color: rgba(124, 58, 237, 0.3);
+    }
+
+    .page-btn:disabled { opacity: 0.3; cursor: default; }
+    .page-info { font-size: 12px; color: var(--text-dim); }
+
+    /* ── RUN HISTORY ── */
+    .run-item {
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.07);
+    }
+
+    .run-item:last-child { border-bottom: none; }
+
+    .run-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .run-date { font-size: 12.5px; font-weight: 600; color: #94a3b8; }
+    .run-ago  { font-size: 11px; color: var(--text-dim); }
+
+    .run-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .run-metric {
+      text-align: center;
+      background: rgba(6, 6, 26, 0.55);
+      border-radius: 6px;
+      padding: 5px 4px;
+    }
+
+    .m-val   { font-size: 16px; font-weight: 700; line-height: 1.2; }
+    .m-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+
+    .run-metric.c-scraped   .m-val { color: var(--purple-light); }
+    .run-metric.c-qualified .m-val { color: var(--blue-light); }
+    .run-metric.c-drafted   .m-val { color: var(--green-light); }
+
+    .run-meta { font-size: 10.5px; color: var(--text-dim); margin-top: 5px; }
+
+    /* ── STATES ── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 36px;
+      color: var(--text-dim);
+      font-size: 13px;
+      gap: 10px;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(124, 58, 237, 0.2);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 32px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(124, 58, 237, 0.25); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(124, 58, 237, 0.45); }
+
+    /* ── GLOW BG ── */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 30%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M2.5 10.5l4-5 4 5 4-5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="14.5" cy="5.5" r="1.5" fill="rgba(255,255,255,0.5)"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <div class="name">toolr.ai</div>
+        <div class="sub">LeadGen SA</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <button class="nav-item active" onclick="window.scrollTo(0,0)">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <rect x="1" y="1" width="5.5" height="5.5" rx="1.5" fill="currentColor"/>
+        <rect x="8.5" y="1" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".5"/>
+        <rect x="1" y="8.5" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".5"/>
+        <rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".5"/>
+      </svg>
+      Dashboard
+    </button>
+
+    <div class="nav-section">Data</div>
+    <button class="nav-item" onclick="document.getElementById('leads-section').scrollIntoView({behavior:'smooth'})">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M7.5 1a3 3 0 100 6 3 3 0 000-6zM2 13.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      Leads
+    </button>
+    <button class="nav-item" onclick="document.getElementById('runs-section').scrollIntoView({behavior:'smooth'})">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M7.5 4v3.75l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      Run History
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="next-run-label">Next run</div>
+    <div class="next-run-time" id="next-run-time">Calculating…</div>
+  </div>
+</aside>
+
+<!-- ── MAIN CONTENT ── -->
+<main class="main">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Dashboard</div>
+      <div class="page-subtitle">SA Lead Generation — toolr.ai</div>
+    </div>
+    <div class="header-actions">
+      <div class="status-badge">
+        <span class="pulse-dot"></span>
+        <span id="last-run-text">Loading…</span>
+      </div>
+      <button class="btn" id="refresh-btn" onclick="loadAll(this)">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <path d="M11 6.5a4.5 4.5 0 01-7.78 3.07M2 6.5a4.5 4.5 0 017.78-3.07" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M11.5 2.5v3h-3M1.5 10.5v-3h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stats-grid">
+    <div class="stat-card c-purple">
+      <div class="stat-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7.5" stroke="#a78bfa" stroke-width="1.5"/>
+          <path d="M20.5 20.5l-4-4" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="stat-label">Total Scraped</div>
+      <div class="stat-value" id="stat-scraped">—</div>
+      <div class="stat-sub">All-time leads found</div>
+    </div>
+
+    <div class="stat-card c-blue">
+      <div class="stat-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <path d="M9 12l2 2 4-4" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="8.5" stroke="#60a5fa" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="stat-label">Qualified</div>
+      <div class="stat-value" id="stat-qualified">—</div>
+      <div class="stat-sub" id="stat-qual-rate">—% of scraped</div>
+    </div>
+
+    <div class="stat-card c-cyan">
+      <div class="stat-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="5" width="18" height="14" rx="2" stroke="#22d3ee" stroke-width="1.5"/>
+          <path d="M3 9l9 6 9-6" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="stat-label">Drafts Created</div>
+      <div class="stat-value" id="stat-drafts">—</div>
+      <div class="stat-sub" id="stat-conv-rate">—% email conversion</div>
+    </div>
+
+    <div class="stat-card c-green">
+      <div class="stat-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <ellipse cx="12" cy="6" rx="7.5" ry="2.5" stroke="#34d399" stroke-width="1.5"/>
+          <path d="M4.5 6v5c0 1.38 3.36 2.5 7.5 2.5s7.5-1.12 7.5-2.5V6" stroke="#34d399" stroke-width="1.5"/>
+          <path d="M4.5 11v5c0 1.38 3.36 2.5 7.5 2.5s7.5-1.12 7.5-2.5v-5" stroke="#34d399" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="stat-label">In Database</div>
+      <div class="stat-value" id="stat-total">—</div>
+      <div class="stat-sub" id="stat-last-run">Last run: —</div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="charts-row">
+    <!-- Activity Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Pipeline Activity</div>
+          <div class="card-sub">Last 14 runs</div>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#7c3aed"></div>Scraped
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#3b82f6"></div>Qualified
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#06b6d4"></div>Drafted
+          </div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="activity-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Donut Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Lead Status</div>
+          <div class="card-sub">All-time breakdown</div>
+        </div>
+      </div>
+      <div class="donut-wrap">
+        <canvas id="donut-chart"></canvas>
+        <div class="donut-center">
+          <div class="big" id="donut-total">—</div>
+          <div class="small">total</div>
+        </div>
+      </div>
+      <div class="donut-legend" id="donut-legend"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Row -->
+  <div class="bottom-row">
+
+    <!-- Leads Table -->
+    <div class="card" id="leads-section">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Recent Leads</div>
+          <div class="card-sub">Latest scraped businesses</div>
+        </div>
+        <div class="tab-bar">
+          <button class="tab active" onclick="filterLeads('all', this)">All</button>
+          <button class="tab" onclick="filterLeads('emailed', this)">Emailed</button>
+          <button class="tab" onclick="filterLeads('qualified', this)">Qualified</button>
+          <button class="tab" onclick="filterLeads('scraped', this)">Pending</button>
+          <button class="tab" onclick="filterLeads('no_email', this)">No Email</button>
+        </div>
+      </div>
+      <div id="leads-table-wrap">
+        <div class="loading"><div class="spinner"></div>Loading leads…</div>
+      </div>
+      <div class="pagination">
+        <button class="page-btn" id="prev-btn" onclick="changePage(-1)" disabled>← Prev</button>
+        <span class="page-info" id="page-info">Page 1</span>
+        <button class="page-btn" id="next-btn" onclick="changePage(1)">Next →</button>
+      </div>
+    </div>
+
+    <!-- Run History -->
+    <div class="card" id="runs-section">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Run History</div>
+          <div class="card-sub">Tue–Fri · 8:00am ACST</div>
+        </div>
+      </div>
+      <div id="runs-list">
+        <div class="loading"><div class="spinner"></div>Loading…</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  // ── STATE ──
+  let currentPage = 0;
+  let currentStatus = 'all';
+  let activityChart = null;
+  let donutChart = null;
+
+  // ── NEXT RUN ──
+  function calcNextRun() {
+    try {
+      const now = new Date();
+      const adelaideStr = now.toLocaleString('en-US', { timeZone: 'Australia/Adelaide' });
+      const adelaideNow = new Date(adelaideStr);
+      const candidate = new Date(adelaideNow);
+      candidate.setHours(8, 0, 0, 0);
+      if (candidate <= adelaideNow) candidate.setDate(candidate.getDate() + 1);
+      const valid = [2, 3, 4, 5]; // Tue-Fri
+      while (!valid.includes(candidate.getDay())) candidate.setDate(candidate.getDate() + 1);
+      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      return `${days[candidate.getDay()]} at 8:00am ACST`;
+    } catch {
+      return 'Tue–Fri 8:00am ACST';
+    }
+  }
+
+  // ── HELPERS ──
+  function timeAgo(dateStr) {
+    if (!dateStr) return '—';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(m / 60);
+    const d = Math.floor(h / 24);
+    if (d > 0) return `${d}d ago`;
+    if (h > 0) return `${h}h ago`;
+    if (m > 0) return `${m}m ago`;
+    return 'Just now';
+  }
+
+  function fmtDate(dateStr) {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function fmtDuration(ms) {
+    if (!ms) return '';
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${(ms / 60000).toFixed(1)}m`;
+  }
+
+  function statusBadge(s) {
+    const labels = { emailed: 'Emailed', qualified: 'Qualified', scraped: 'Pending', not_qualified: 'Rejected', no_email: 'No Email' };
+    return `<span class="badge badge-${s}">${labels[s] || s}</span>`;
+  }
+
+  // ── STATS ──
+  async function loadStats() {
+    try {
+      const d = await fetch('/api/stats').then(r => r.json());
+
+      document.getElementById('stat-scraped').textContent   = (d.totals?.leads_scraped || 0).toLocaleString();
+      document.getElementById('stat-qualified').textContent = (d.totals?.leads_qualified || 0).toLocaleString();
+      document.getElementById('stat-qual-rate').textContent = `${d.qualRate || 0}% of scraped`;
+      document.getElementById('stat-drafts').textContent    = (d.totals?.drafts_created || 0).toLocaleString();
+      document.getElementById('stat-conv-rate').textContent = `${d.convRate || 0}% email conversion`;
+      document.getElementById('stat-total').textContent     = (d.total || 0).toLocaleString();
+
+      if (d.lastRun) {
+        document.getElementById('last-run-text').textContent  = `Last run ${timeAgo(d.lastRun.run_at)}`;
+        document.getElementById('stat-last-run').textContent  = `Last run: ${timeAgo(d.lastRun.run_at)}`;
+      } else {
+        document.getElementById('last-run-text').textContent  = 'No runs yet';
+        document.getElementById('stat-last-run').textContent  = '';
+      }
+
+      // Donut
+      const sc = d.statusCounts || {};
+      document.getElementById('donut-total').textContent = (d.total || 0).toLocaleString();
+
+      const statuses = ['emailed', 'qualified', 'scraped', 'no_email', 'not_qualified'];
+      const colors   = { emailed: '#10b981', qualified: '#3b82f6', scraped: '#7c3aed', no_email: '#f59e0b', not_qualified: '#374151' };
+      const labels   = { emailed: 'Emailed', qualified: 'Qualified', scraped: 'Pending', no_email: 'No Email', not_qualified: 'Rejected' };
+
+      if (donutChart) donutChart.destroy();
+      const dCtx = document.getElementById('donut-chart').getContext('2d');
+      donutChart = new Chart(dCtx, {
+        type: 'doughnut',
+        data: {
+          labels: statuses.map(s => labels[s]),
+          datasets: [{
+            data: statuses.map(s => sc[s] || 0),
+            backgroundColor: statuses.map(s => colors[s]),
+            borderColor: '#0b0b23',
+            borderWidth: 3,
+            hoverOffset: 5,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()}` } }
+          },
+          cutout: '73%',
+        }
+      });
+
+      document.getElementById('donut-legend').innerHTML = statuses.map(s => `
+        <div class="donut-legend-item">
+          <div class="dl-dot" style="background:${colors[s]}"></div>
+          <span>${labels[s]}</span>
+          <span class="dl-val">${(sc[s] || 0).toLocaleString()}</span>
+        </div>
+      `).join('');
+
+    } catch (e) { console.error('Stats error:', e); }
+  }
+
+  // ── ACTIVITY CHART ──
+  async function loadChart() {
+    try {
+      const data = await fetch('/api/chart').then(r => r.json());
+      if (!data.length) return;
+
+      const ctx = document.getElementById('activity-chart').getContext('2d');
+
+      const gPurple = ctx.createLinearGradient(0, 0, 0, 200);
+      gPurple.addColorStop(0, 'rgba(124,58,237,0.45)');
+      gPurple.addColorStop(1, 'rgba(124,58,237,0)');
+
+      const gBlue = ctx.createLinearGradient(0, 0, 0, 200);
+      gBlue.addColorStop(0, 'rgba(59,130,246,0.38)');
+      gBlue.addColorStop(1, 'rgba(59,130,246,0)');
+
+      const gCyan = ctx.createLinearGradient(0, 0, 0, 200);
+      gCyan.addColorStop(0, 'rgba(6,182,212,0.32)');
+      gCyan.addColorStop(1, 'rgba(6,182,212,0)');
+
+      const labels = data.map(r => {
+        const d = new Date(r.run_at);
+        return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+      });
+
+      if (activityChart) activityChart.destroy();
+      activityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Scraped',
+              data: data.map(r => r.leads_scraped || 0),
+              borderColor: '#7c3aed', backgroundColor: gPurple,
+              fill: true, tension: 0.4, borderWidth: 2,
+              pointRadius: 3, pointBackgroundColor: '#7c3aed', pointHoverRadius: 5,
+            },
+            {
+              label: 'Qualified',
+              data: data.map(r => r.leads_qualified || 0),
+              borderColor: '#3b82f6', backgroundColor: gBlue,
+              fill: true, tension: 0.4, borderWidth: 2,
+              pointRadius: 3, pointBackgroundColor: '#3b82f6', pointHoverRadius: 5,
+            },
+            {
+              label: 'Drafted',
+              data: data.map(r => r.drafts_created || 0),
+              borderColor: '#06b6d4', backgroundColor: gCyan,
+              fill: true, tension: 0.4, borderWidth: 2,
+              pointRadius: 3, pointBackgroundColor: '#06b6d4', pointHoverRadius: 5,
+            },
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(8,8,26,0.95)',
+              borderColor: 'rgba(124,58,237,0.3)',
+              borderWidth: 1,
+              titleColor: '#94a3b8',
+              bodyColor: '#e2e8f0',
+              padding: 10,
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(124,58,237,0.06)', drawBorder: false },
+              ticks: { color: '#374151', font: { size: 11 } },
+            },
+            y: {
+              grid: { color: 'rgba(124,58,237,0.06)', drawBorder: false },
+              ticks: { color: '#374151', font: { size: 11 } },
+              beginAtZero: true,
+            }
+          }
+        }
+      });
+    } catch (e) { console.error('Chart error:', e); }
+  }
+
+  // ── LEADS TABLE ──
+  async function loadLeads() {
+    const wrap = document.getElementById('leads-table-wrap');
+    wrap.innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
+    try {
+      const url = `/api/leads?page=${currentPage}${currentStatus !== 'all' ? '&status=' + currentStatus : ''}`;
+      const data = await fetch(url).then(r => r.json());
+
+      document.getElementById('page-info').textContent = `Page ${currentPage + 1}`;
+      document.getElementById('prev-btn').disabled = currentPage === 0;
+      document.getElementById('next-btn').disabled = data.length < 25;
+
+      if (!data.length) {
+        wrap.innerHTML = '<div class="empty">No leads found</div>';
+        return;
+      }
+
+      const rows = data.map(l => `
+        <tr>
+          <td class="biz-name" title="${l.business_name}">${l.business_name}</td>
+          <td><span class="cat-pill">${l.category || '—'}</span></td>
+          <td>${l.suburb || '—'}</td>
+          <td>${statusBadge(l.status)}</td>
+          <td style="color:#4b5563;font-size:11px">${l.qualification_reason || '—'}</td>
+          <td title="${l.scraped_at}">${timeAgo(l.scraped_at)}</td>
+        </tr>
+      `).join('');
+
+      wrap.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Business</th>
+                <th>Category</th>
+                <th>Suburb</th>
+                <th>Status</th>
+                <th>Reason</th>
+                <th>Scraped</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    } catch (e) {
+      wrap.innerHTML = '<div class="empty">Error loading leads</div>';
+      console.error(e);
+    }
+  }
+
+  function filterLeads(status, btn) {
+    currentStatus = status;
+    currentPage = 0;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    loadLeads();
+  }
+
+  function changePage(dir) {
+    currentPage = Math.max(0, currentPage + dir);
+    loadLeads();
+  }
+
+  // ── RUN HISTORY ──
+  async function loadRuns() {
+    const el = document.getElementById('runs-list');
+    try {
+      const data = await fetch('/api/runs').then(r => r.json());
+      if (!data.length) {
+        el.innerHTML = '<div class="empty">No runs yet</div>';
+        return;
+      }
+      el.innerHTML = data.map(r => `
+        <div class="run-item">
+          <div class="run-header">
+            <span class="run-date">${fmtDate(r.run_at)}</span>
+            <span class="run-ago">${timeAgo(r.run_at)}</span>
+          </div>
+          <div class="run-metrics">
+            <div class="run-metric c-scraped">
+              <div class="m-val">${r.leads_scraped || 0}</div>
+              <div class="m-label">Scraped</div>
+            </div>
+            <div class="run-metric c-qualified">
+              <div class="m-val">${r.leads_qualified || 0}</div>
+              <div class="m-label">Qualified</div>
+            </div>
+            <div class="run-metric c-drafted">
+              <div class="m-val">${r.drafts_created || 0}</div>
+              <div class="m-label">Drafted</div>
+            </div>
+          </div>
+          ${r.duration_ms ? `<div class="run-meta">${fmtDuration(r.duration_ms)} · ${r.errors || 0} errors · ${r.leads_skipped_duplicate || 0} dupes</div>` : ''}
+        </div>
+      `).join('');
+    } catch (e) {
+      el.innerHTML = '<div class="empty">Error loading runs</div>';
+      console.error(e);
+    }
+  }
+
+  // ── INIT ──
+  async function loadAll(btn) {
+    if (btn) btn.classList.add('spinning');
+    document.getElementById('next-run-time').textContent = calcNextRun();
+    await Promise.all([loadStats(), loadChart(), loadLeads(), loadRuns()]);
+    if (btn) btn.classList.remove('spinning');
+  }
+
+  loadAll();
+</script>
+</body>
+</html>

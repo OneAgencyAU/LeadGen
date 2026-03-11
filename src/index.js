@@ -12,6 +12,7 @@
 
 const cron = require('node-cron');
 const { runDailyPipeline } = require('./run');
+const { startServer } = require('./server');
 const logger = require('./logger');
 
 // Validate required env vars on startup so Railway surfaces misconfiguration immediately
@@ -54,6 +55,11 @@ cron.schedule(CRON_SCHEDULE, async () => {
 });
 
 logger.info('Cron scheduled. Waiting for next run...');
+
+// Start dashboard HTTP server
+startServer().catch((err) => {
+  logger.error('Failed to start dashboard server:', err);
+});
 
 // Keep the process alive (Railway always-on)
 process.on('SIGTERM', () => {

@@ -9,6 +9,7 @@
     "setup-gmail": "node scripts/setupGmailAuth.js"
   },
   "dependencies": {
+    "express": "^4.21.2",
     "@anthropic-ai/sdk": "^0.39.0",
     "@supabase/supabase-js": "^2.39.0",
     "apify-client": "^2.9.4",
