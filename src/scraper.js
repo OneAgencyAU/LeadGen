@@ -66,6 +66,10 @@ function parseSuburb(address) {
  * Normalise a single Apify Google Maps result into our lead format.
  */
 function normalisePlaceResult(place, category) {
+  const lastReview = Array.isArray(place.reviews) && place.reviews.length > 0
+    ? place.reviews[0].publishedAtDate || null
+    : null;
+
   return {
     business_name: (place.title || place.name || '').trim(),
     category,
@@ -75,6 +79,8 @@ function normalisePlaceResult(place, category) {
     website_url: place.website || null,
     raw_address: place.address || null,
     maps_url: place.url || place.mapUrl || null,
+    permanently_closed: place.permanentlyClosed === true || place.temporarilyClosed === true,
+    last_review_date: lastReview,
   };
 }
 
@@ -109,7 +115,7 @@ async function scrapeSuburb(suburb) {
       maxCrawledPlacesPerSearch: 20,
       language: 'en',
       country: 'AU',
-      maxReviews: 0,
+      maxReviews: 1,
       exportPlaceUrls: false,
       additionalInfo: false,
       scrapeDirectories: false,

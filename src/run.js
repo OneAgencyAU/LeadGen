@@ -30,6 +30,8 @@ async function runDailyPipeline() {
   const dailyCap = config.dailyLeadCap();
   logger.info(`=== SA LeadGen daily run starting — cap: ${dailyCap} ===`);
 
+  const STALE_REVIEW_YEARS = 3;
+
   const summary = {
     run_at: new Date().toISOString(),
     leads_scraped: 0,
@@ -37,6 +39,8 @@ async function runDailyPipeline() {
     drafts_created: 0,
     leads_skipped_no_email: 0,
     leads_skipped_duplicate: 0,
+    leads_skipped_closed: 0,
+    leads_skipped_stale: 0,
     errors: 0,
   };
 
@@ -87,6 +91,24 @@ async function runDailyPipeline() {
   const storedNewLeads = [];
   for (const lead of newLeads) {
     if (!lead.business_name) continue;
+
+    // Skip permanently or temporarily closed businesses
+    if (lead.permanently_closed) {
+      logger.debug(`Skipping closed business: ${lead.business_name}`);
+      summary.leads_skipped_closed++;
+      continue;
+    }
+
+    // Skip businesses whose last review is older than STALE_REVIEW_YEARS (only if they have reviews)
+    if (lead.last_review_date) {
+      const ageYears = (Date.now() - new Date(lead.last_review_date)) / (1000 * 60 * 60 * 24 * 365.25);
+      if (ageYears > STALE_REVIEW_YEARS) {
+        logger.debug(`Skipping stale business (last review ${Math.floor(ageYears)}y ago): ${lead.business_name}`);
+        summary.leads_skipped_stale++;
+        continue;
+      }
+    }
+
     try {
       const exists = await db.businessExists(lead.business_name, lead.suburb);
       if (exists) {
@@ -216,6 +238,8 @@ async function runDailyPipeline() {
   logger.info(`  Drafts created: ${summary.drafts_created}`);
   logger.info(`  Skipped (no email): ${summary.leads_skipped_no_email}`);
   logger.info(`  Skipped (duplicate): ${summary.leads_skipped_duplicate}`);
+  logger.info(`  Skipped (closed): ${summary.leads_skipped_closed}`);
+  logger.info(`  Skipped (stale reviews): ${summary.leads_skipped_stale}`);
   logger.info(`  Errors: ${summary.errors}`);
 
   try {

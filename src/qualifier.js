@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const logger = require('./logger');
 
 const HTTP_TIMEOUT_MS = 10000;
-const OUTDATED_YEAR_THRESHOLD = 2016;
+const OUTDATED_YEAR_THRESHOLD = 2023;
 
 /**
  * Qualify a lead based on their web presence.
@@ -50,23 +50,47 @@ async function qualifyLead(lead) {
   const html = response.data || '';
   const $ = cheerio.load(html);
 
-  // 5. Not mobile-friendly (no viewport meta tag)
+  // 5. Website signals that the business is closed
+  if (appearsClosedFromContent($, html)) {
+    return { qualified: false, reason: 'appears_closed', email: lead.email };
+  }
+
+  // 6. Not mobile-friendly (no viewport meta tag)
   const viewport = $('meta[name="viewport"]').attr('content');
   if (!viewport) {
     const scrapedEmail = extractEmailFromHtml($, html) || lead.email;
     return { qualified: true, reason: 'not_mobile', email: scrapedEmail };
   }
 
-  // 6. Outdated website (pre-2016)
+  // 7. Outdated website (pre-2023)
   const buildYear = detectBuildYear($, html);
   if (buildYear && buildYear < OUTDATED_YEAR_THRESHOLD) {
     const scrapedEmail = extractEmailFromHtml($, html) || lead.email;
     return { qualified: true, reason: 'outdated', email: scrapedEmail };
   }
 
-  // 7. Try to extract email even for non-qualifying sites (for future use)
+  // 8. Try to extract email even for non-qualifying sites (for future use)
   const scrapedEmail = extractEmailFromHtml($, html) || lead.email;
   return { qualified: false, reason: null, email: scrapedEmail };
+}
+
+/**
+ * Check page content for signals that the business has closed down.
+ */
+function appearsClosedFromContent($, html) {
+  const CLOSED_PATTERNS = [
+    /permanently\s+closed/i,
+    /no longer (trading|operating|open|in business)/i,
+    /we\s+(have\s+)?(closed|shut)/i,
+    /closed\s+(down|our doors|for good|permanently)/i,
+    /ceased\s+trading/i,
+    /out of business/i,
+    /winding\s+up/i,
+    /business\s+has\s+closed/i,
+  ];
+
+  const bodyText = $('body').text();
+  return CLOSED_PATTERNS.some(pattern => pattern.test(bodyText) || pattern.test(html));
 }
 
 /**
