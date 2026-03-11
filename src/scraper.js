@@ -144,6 +144,8 @@ async function scrapeGoogleMaps(targetCount = 100) {
       scrapeDirectories: false,
       scrapeImageUrls: false,
       scrapeResponseFromOwnerText: false,
+      // Prevent the actor from zooming out and crawling all of Australia
+      maxAutomaticZoomOut: 1,
     },
     { waitSecs: 240 }
   );
