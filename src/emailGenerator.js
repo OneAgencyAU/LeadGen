@@ -17,7 +17,7 @@ const QUALIFICATION_LABELS = {
   no_website: 'no website at all',
   broken: 'a broken or non-functioning website',
   not_mobile: 'a website that is not mobile-friendly',
-  outdated: 'a website that looks like it was built before 2016',
+  outdated: 'a website that looks like it hasn\'t been updated since before 2023',
 };
 
 /**
