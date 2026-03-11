@@ -34,18 +34,48 @@ function encodeBase64Url(str) {
 }
 
 /**
+ * Convert plain text email body to HTML, preserving paragraph breaks.
+ */
+function plainTextToHtml(text) {
+  return text
+    .split(/\n\n+/)
+    .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+    .join('\n');
+}
+
+/**
+ * Fetch the default Gmail signature for the authenticated account.
+ * Returns an HTML string, or empty string if unavailable.
+ */
+async function getDefaultSignature() {
+  try {
+    const gmail = getGmailClient();
+    const res = await gmail.users.settings.sendAs.list({ userId: 'me' });
+    const primary = (res.data.sendAs || []).find(s => s.isPrimary);
+    return primary?.signature || '';
+  } catch (err) {
+    logger.warn('Could not fetch Gmail signature:', err.message);
+    return '';
+  }
+}
+
+/**
  * Build a raw RFC 2822 email message.
  */
-function buildRawEmail({ to, from, fromName, subject, body }) {
+function buildRawEmail({ to, from, fromName, subject, body, signature }) {
+  const htmlBody = plainTextToHtml(body);
+  const fullHtml = signature
+    ? `${htmlBody}\n<br>\n<div>${signature}</div>`
+    : htmlBody;
+
   const lines = [
     `From: ${fromName} <${from}>`,
     `To: ${to}`,
     `Subject: ${subject}`,
     `MIME-Version: 1.0`,
-    `Content-Type: text/plain; charset=UTF-8`,
-    `Content-Transfer-Encoding: quoted-printable`,
+    `Content-Type: text/html; charset=UTF-8`,
     '',
-    body,
+    fullHtml,
   ];
   return encodeBase64Url(lines.join('\r\n'));
 }
@@ -64,12 +94,15 @@ async function createDraft(lead, subject, body) {
     throw new Error(`No email address for lead: ${lead.business_name}`);
   }
 
+  const signature = await getDefaultSignature();
+
   const raw = buildRawEmail({
     to: toEmail,
     from: config.fromEmail,
     fromName: config.fromName,
     subject,
     body,
+    signature,
   });
 
   const gmail = getGmailClient();

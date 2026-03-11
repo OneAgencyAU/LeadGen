@@ -28,6 +28,7 @@ const QUALIFICATION_LABELS = {
  * @returns {{ subject: string, body: string }}
  */
 async function generateEmail(lead, portfolioMatch) {
+  const currentYear = new Date().getFullYear();
   const qualificationDesc = QUALIFICATION_LABELS[lead.qualification_reason] || 'a web presence that needs work';
   const portfolioContext = portfolioMatch
     ? `Portfolio match found:
@@ -38,7 +39,7 @@ async function generateEmail(lead, portfolioMatch) {
   Reference this naturally in the email — let it speak for itself. Don't force it.`
     : `No close portfolio match found. Do NOT make up or reference a portfolio project. Omit that element entirely.`;
 
-  const systemPrompt = `You are writing cold emails on behalf of Alex from toolr.ai — a web developer based in South Australia.
+  const systemPrompt = `You are writing cold emails on behalf of Alex from toolr.ai — a web developer based in South Australia. The current year is ${currentYear}.
 
 Alex's voice:
 - Casual, warm Australian tone — 'reckon', 'chuck', 'no worries', 'keen' used naturally (not forced)
@@ -65,7 +66,7 @@ Subject line rules:
 Return your response as JSON with this exact shape:
 {"subject": "...", "body": "..."}
 
-The body should use plain text with newlines between paragraphs. No HTML.`;
+The body should use paragraphs separated by blank lines. No HTML tags.`;
 
   const userPrompt = `Generate a cold email for this SA business:
 
