@@ -47,7 +47,7 @@ async function qualifyLead(lead) {
     return { qualified: false, reason: null, email: lead.email };
   }
 
-  const html = response.data || '';
+  const html = typeof response.data === 'string' ? response.data : '';
   const $ = cheerio.load(html);
 
   // 5. Website signals that the business is closed
