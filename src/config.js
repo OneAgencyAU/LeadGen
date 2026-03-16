@@ -30,7 +30,7 @@ module.exports = {
   dailyLeadCap: () => parseInt(optional('DAILY_LEAD_CAP', '20'), 10),
   fromEmail: 'alex@toolr.ai',
   fromName: 'Alex',
-  claudeModel: 'claude-sonnet-4-20250514',
+  claudeModel: 'claude-sonnet-4-6',
   // Apify Google Maps Scraper actor
   apifyGoogleMapsActor: 'compass/crawler-google-places',
 };
