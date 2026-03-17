@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const logger = require('./logger');
 
 const HTTP_TIMEOUT_MS = 10000;
-const OUTDATED_YEAR_THRESHOLD = 2023;
+const OUTDATED_YEAR_THRESHOLD = 2024; // qualify sites last updated 2023 or earlier
 
 /**
  * Qualify a lead based on their web presence.
@@ -14,9 +14,9 @@ const OUTDATED_YEAR_THRESHOLD = 2023;
 async function qualifyLead(lead) {
   const { website_url } = lead;
 
-  // 1. No website at all
+  // 1. No website — skip (can't scrape email, pitch doesn't apply)
   if (!website_url || website_url.trim() === '') {
-    return { qualified: true, reason: 'no_website', email: lead.email };
+    return { qualified: false, reason: null, email: lead.email };
   }
 
   // 2. Try to fetch the website
@@ -33,12 +33,12 @@ async function qualifyLead(lead) {
     });
   } catch (err) {
     logger.debug(`Website fetch failed for ${website_url}: ${err.message}`);
-    return { qualified: true, reason: 'broken', email: lead.email };
+    return { qualified: false, reason: null, email: lead.email };
   }
 
-  // 3. Broken / 404
+  // 3. Broken / 404 — skip (can't scrape email)
   if (response.status === 404 || response.status >= 500) {
-    return { qualified: true, reason: 'broken', email: lead.email };
+    return { qualified: false, reason: null, email: lead.email };
   }
 
   // 4. Non-HTML responses (parking pages, etc.)
@@ -55,14 +55,7 @@ async function qualifyLead(lead) {
     return { qualified: false, reason: 'appears_closed', email: lead.email };
   }
 
-  // 6. Not mobile-friendly (no viewport meta tag)
-  const viewport = $('meta[name="viewport"]').attr('content');
-  if (!viewport) {
-    const scrapedEmail = extractEmailFromHtml($, html) || lead.email;
-    return { qualified: true, reason: 'not_mobile', email: scrapedEmail };
-  }
-
-  // 7. Outdated website (pre-2023)
+  // 6. Outdated website (2023 or earlier) — this is our target
   const buildYear = detectBuildYear($, html);
   if (buildYear && buildYear < OUTDATED_YEAR_THRESHOLD) {
     const scrapedEmail = extractEmailFromHtml($, html) || lead.email;
