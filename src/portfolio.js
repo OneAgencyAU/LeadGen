@@ -1,8 +1,16 @@
 'use strict';
 
 const { google } = require('googleapis');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 const config = require('./config');
 const logger = require('./logger');
+
+// googleapis/gaxios respects NO_PROXY — but *.googleapis.com is in NO_PROXY in
+// this container, so direct connections are attempted and fail (no raw internet).
+// Pass an explicit agent via clientOptions.transporterOptions to force all
+// Google API and OAuth token requests through the proxy regardless of NO_PROXY.
+const _proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+const _proxyAgent = _proxyUrl ? new HttpsProxyAgent(_proxyUrl) : undefined;
 
 let _portfolioCache = null;
 let _cacheTime = null;
@@ -26,6 +34,7 @@ async function loadPortfolio() {
   const auth = new google.auth.GoogleAuth({
     credentials: serviceAccount,
     scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    ...(_proxyAgent ? { clientOptions: { transporterOptions: { agent: _proxyAgent } } } : {}),
   });
 
   const sheets = google.sheets({ version: 'v4', auth });
