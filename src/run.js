@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 /**
  * Main orchestration — runs the full lead generation pipeline for one day.
  *
