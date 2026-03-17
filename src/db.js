@@ -1,6 +1,7 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
+const { ProxyAgent, fetch: undiciFetch } = require('undici');
 const config = require('./config');
 const logger = require('./logger');
 
@@ -8,7 +9,14 @@ let _client = null;
 
 function getClient() {
   if (!_client) {
-    _client = createClient(config.supabaseUrl(), config.supabaseServiceKey());
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+    const customFetch = dispatcher
+      ? (url, opts) => undiciFetch(url, { ...opts, dispatcher })
+      : undefined;
+    _client = createClient(config.supabaseUrl(), config.supabaseServiceKey(), {
+      global: customFetch ? { fetch: customFetch } : {},
+    });
   }
   return _client;
 }
