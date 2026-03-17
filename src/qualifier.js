@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const logger = require('./logger');
 
 const HTTP_TIMEOUT_MS = 10000;
-const OUTDATED_YEAR_THRESHOLD = 2024; // qualify sites last updated 2023 or earlier
+const OUTDATED_YEAR_THRESHOLD = new Date().getFullYear() + 1; // qualify sites not updated this calendar year
 
 /**
  * Qualify a lead based on their web presence.
@@ -55,14 +55,15 @@ async function qualifyLead(lead) {
     return { qualified: false, reason: 'appears_closed', email: lead.email };
   }
 
-  // 6. Outdated website (2023 or earlier), or no date detectable — this is our target
+  // 6. Outdated website (not updated this calendar year), or no date detectable — this is our target
   const buildYear = detectBuildYear($, html, response.headers);
   if (!buildYear || buildYear < OUTDATED_YEAR_THRESHOLD) {
-    const scrapedEmail = extractEmailFromHtml($, html) || lead.email;
+    const homepageEmail = extractEmailFromHtml($, html);
+    const scrapedEmail = homepageEmail || await crawlSubPagesForEmail(normaliseUrl(website_url)) || lead.email;
     return { qualified: true, reason: buildYear ? 'outdated' : 'undated', email: scrapedEmail };
   }
 
-  // 8. Try to extract email even for non-qualifying sites (for future use)
+  // 7. Try to extract email even for non-qualifying sites (for future use)
   const scrapedEmail = extractEmailFromHtml($, html) || lead.email;
   return { qualified: false, reason: null, email: scrapedEmail };
 }
@@ -122,6 +123,39 @@ function detectBuildYear($, html, headers = {}) {
 
   // Use the minimum year found as a conservative estimate of build year
   return Math.min(...signals);
+}
+
+/**
+ * Try common sub-pages (/contact, /about, /contact-us) for an email address.
+ * Returns the first email found, or null.
+ */
+async function crawlSubPagesForEmail(baseUrl) {
+  const subPaths = ['/contact', '/contact-us', '/about', '/about-us', '/get-in-touch'];
+  const origin = new URL(baseUrl).origin;
+
+  for (const path of subPaths) {
+    try {
+      const res = await axios.get(`${origin}${path}`, {
+        timeout: HTTP_TIMEOUT_MS,
+        maxRedirects: 3,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LeadQualifier/1.0; +https://toolr.ai)' },
+        validateStatus: () => true,
+      });
+      if (res.status !== 200) continue;
+      const contentType = res.headers['content-type'] || '';
+      if (!contentType.includes('text/html')) continue;
+      const html = typeof res.data === 'string' ? res.data : '';
+      const $ = cheerio.load(html);
+      const email = extractEmailFromHtml($, html);
+      if (email) {
+        logger.debug(`Found email on ${origin}${path}: ${email}`);
+        return email;
+      }
+    } catch {
+      // ignore per-page errors
+    }
+  }
+  return null;
 }
 
 /**
