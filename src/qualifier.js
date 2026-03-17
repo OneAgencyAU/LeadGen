@@ -55,11 +55,11 @@ async function qualifyLead(lead) {
     return { qualified: false, reason: 'appears_closed', email: lead.email };
   }
 
-  // 6. Outdated website (2023 or earlier) — this is our target
-  const buildYear = detectBuildYear($, html);
-  if (buildYear && buildYear < OUTDATED_YEAR_THRESHOLD) {
+  // 6. Outdated website (2023 or earlier), or no date detectable — this is our target
+  const buildYear = detectBuildYear($, html, response.headers);
+  if (!buildYear || buildYear < OUTDATED_YEAR_THRESHOLD) {
     const scrapedEmail = extractEmailFromHtml($, html) || lead.email;
-    return { qualified: true, reason: 'outdated', email: scrapedEmail };
+    return { qualified: true, reason: buildYear ? 'outdated' : 'undated', email: scrapedEmail };
   }
 
   // 8. Try to extract email even for non-qualifying sites (for future use)
@@ -90,7 +90,7 @@ function appearsClosedFromContent($, html) {
  * Detect the approximate build/last-update year from page HTML signals.
  * Returns a year number or null if undetectable.
  */
-function detectBuildYear($, html) {
+function detectBuildYear($, html, headers = {}) {
   const signals = [];
 
   // Copyright year in footer
@@ -111,8 +111,12 @@ function detectBuildYear($, html) {
   const revisedYear = revised.match(/20\d{2}/);
   if (revisedYear) signals.push(parseInt(revisedYear[0], 10));
 
-  // Last-Modified header year (not available here but would be from response headers)
-  // Skipped as we'd need to pass response headers in
+  // Last-Modified response header
+  const lastModified = headers['last-modified'];
+  if (lastModified) {
+    const lmYear = new Date(lastModified).getFullYear();
+    if (lmYear >= 2000 && lmYear <= 2030) signals.push(lmYear);
+  }
 
   if (signals.length === 0) return null;
 
