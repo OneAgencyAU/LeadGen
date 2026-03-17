@@ -124,7 +124,7 @@ async function scrapeSuburb(suburb) {
       // Keep search geographically tight — don't expand beyond the suburb
       maxAutomaticZoomOut: 1,
     },
-    { waitSecs: 300 }
+    { waitSecs: 300, memory: 1024 }
   );
 
   logger.info(`Apify run ${run.id} finished for ${suburb}. Fetching results...`);
