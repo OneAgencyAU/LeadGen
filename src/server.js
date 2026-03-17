@@ -5,6 +5,9 @@ const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const config = require('./config');
 const logger = require('./logger');
+const { runDailyPipeline } = require('./run');
+
+let _pipelineRunning = false;
 
 let _supabase = null;
 
@@ -106,6 +109,23 @@ async function startServer() {
       res.json(data || []);
     } catch (err) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Manual pipeline trigger
+  app.post('/api/run', async (req, res) => {
+    if (_pipelineRunning) {
+      return res.status(409).json({ error: 'Pipeline already running' });
+    }
+    _pipelineRunning = true;
+    res.json({ started: true });
+    logger.info('Manual pipeline trigger via /api/run');
+    try {
+      await runDailyPipeline();
+    } catch (err) {
+      logger.error('Error in manually triggered pipeline:', err);
+    } finally {
+      _pipelineRunning = false;
     }
   });
 
